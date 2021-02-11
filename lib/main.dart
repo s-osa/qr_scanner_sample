@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:barcode_scan/barcode_scan.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_scanner_sample/db_provider.dart';
+import 'package:qr_scanner_sample/scan_history.dart';
 
 void main() {
   runApp(MyApp());
@@ -32,11 +34,16 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   ScanResult scanResult;
+  List<ScanHistory> scanHistories = [];
 
   Future _scan() async {
     try {
       var result = await BarcodeScanner.scan();
       setState(() => scanResult = result);
+
+      var newScanHistory = new ScanHistory(payload: result.rawContent);
+      DBProvider.db.newScanHistory(newScanHistory);
+      scanHistories.add(newScanHistory);
     } on PlatformException catch (e) {
       var result = ScanResult(
         type: ResultType.Error,
@@ -86,6 +93,13 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     ];
 
+    final tiles = scanHistories.map((ScanHistory sh) {
+      return ListTile(
+        title: Text(sh.payload),
+      );
+    });
+    final divided = ListTile.divideTiles(context: context, tiles: tiles).toList();
+
     return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
@@ -95,12 +109,9 @@ class _MyHomePageState extends State<MyHomePage> {
           body: ListView(
             scrollDirection: Axis.vertical,
             shrinkWrap: true,
-            children: contentList,
+            children: contentList + divided,
           ),
-          floatingActionButton: FloatingActionButton(
-              onPressed: _scan,
-              tooltip: 'Scan',
-              child: Icon(Icons.qr_code_scanner)),
+          floatingActionButton: FloatingActionButton(onPressed: _scan, tooltip: 'Scan', child: Icon(Icons.qr_code_scanner)),
         ));
   }
 }
